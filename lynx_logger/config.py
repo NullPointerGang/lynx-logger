@@ -126,6 +126,9 @@ class LogConfig:
             Path(self.logs_dir).mkdir(parents=True, exist_ok=True)
             self.file.enabled = True
         
+        if self.file.enabled:
+            Path(self.logs_dir).mkdir(parents=True, exist_ok=True)
+        
         if self.log_to_console:
             self.console.enabled = True
         

@@ -185,10 +185,10 @@ class TestKeyValueFormatter:
         formatted = formatter.format(record)
         
         assert "event='KeyValue test'" in formatted
-        assert "level=info" in formatted
-        assert "logger=kv_test" in formatted
-        assert "key1=value1" in formatted
-        assert "key2=42" in formatted
+        assert "level='info'" in formatted  # KeyValueRenderer добавляет кавычки
+        assert "logger='kv_test'" in formatted  # KeyValueRenderer добавляет кавычки
+        assert "key1='value1'" in formatted  # KeyValueRenderer добавляет кавычки
+        assert "key2=42" in formatted  # Числа без кавычек
         
     def test_keyvalue_formatter_special_characters(self):
         """Тест key-value форматирования со специальными символами"""
@@ -233,7 +233,7 @@ class TestKeyValueFormatter:
         
         assert "event='None test'" in formatted
         assert "none_value=None" in formatted or "none_value='None'" in formatted
-        assert "normal_value=normal" in formatted
+        assert "normal_value='normal'" in formatted  # KeyValueRenderer добавляет кавычки
 
 
 class TestGetFormatter:

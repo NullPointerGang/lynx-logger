@@ -38,18 +38,19 @@ class LynxLogger:
     
     def _setup_logging(self):
         """Настройка системы логирования"""
-        self._clear_handlers()
+        self._logger_instance = logging.getLogger(self.config.name)
+        self._logger_instance.setLevel(self.config.level.value)
         
-        root_logger = logging.getLogger()
-        root_logger.setLevel(self.config.level.value)
+        if self._logger_instance.hasHandlers():
+            self._logger_instance.handlers.clear()
         
         shared_processors = self._get_shared_processors()
         
         if self.config.console.enabled:
-            self._setup_console_handler(root_logger, shared_processors)
+            self._setup_console_handler(self._logger_instance, shared_processors)
         
         if self.config.file.enabled:
-            self._setup_file_handler(root_logger, shared_processors)
+            self._setup_file_handler(self._logger_instance, shared_processors)
         
         self._setup_structlog(shared_processors)
         
@@ -61,12 +62,6 @@ class LynxLogger:
                             name=self.config.name,
                             level=self.config.level.name,
                             format=self.config.format.value)
-    
-    def _clear_handlers(self):
-        """Очистка предыдущих обработчиков"""
-        root_logger = logging.getLogger()
-        if root_logger.hasHandlers():
-            root_logger.handlers.clear()
     
     def _get_shared_processors(self) -> List[Any]:
         """Получение общих процессоров для всех обработчиков"""
@@ -177,17 +172,17 @@ class LynxLogger:
         """Применение фильтров к логгеру"""
         if self.config.filters.min_level:
             filter_obj = LogFilter.level_filter(self.config.filters.min_level)
-            for handler in logging.getLogger().handlers:
+            for handler in self._logger_instance.handlers:
                 handler.addFilter(filter_obj)
         
         if self.config.filters.exclude_loggers:
             filter_obj = LogFilter.exclude_loggers(self.config.filters.exclude_loggers)
-            for handler in logging.getLogger().handlers:
+            for handler in self._logger_instance.handlers:
                 handler.addFilter(filter_obj)
         
         if self.config.filters.include_only:
             filter_obj = LogFilter.include_only(self.config.filters.include_only)
-            for handler in logging.getLogger().handlers:
+            for handler in self._logger_instance.handlers:
                 handler.addFilter(filter_obj)
     
     def _parse_size(self, size_str: str) -> int:
@@ -303,9 +298,9 @@ class LynxLogger:
             level = Level.from_string(level)
         
         self.config.level = level
-        logging.getLogger().setLevel(level.value)
+        self._logger_instance.setLevel(level.value)
         
-        for handler in logging.getLogger().handlers:
+        for handler in self._logger_instance.handlers:
             handler.setLevel(level.value)
         
         self.info("Log level changed", new_level=level.name)

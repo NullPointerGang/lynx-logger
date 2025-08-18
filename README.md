@@ -44,72 +44,7 @@ logger = setup_logger(
 logger.info("User logged in", user_id=123, ip="192.168.1.1")
 ```
 
-### Продвинутая настройка
-
-```python
-from lynx_logger import LynxLogger, LogConfig, Level, Format
-
-config = LogConfig(
-    name="my_app",
-    level=Level.DEBUG,
-    format=Format.JSON,
-    dev_mode=True,
-    log_to_console=True,
-    log_to_file=True,
-    logs_dir="./logs"
-)
-
-logger = LynxLogger(config)
-logger.info("Application configured", config=config.to_dict())
-```
-
-## Интеграция с веб-фреймворками
-
-### FastAPI
-
-```python
-from fastapi import FastAPI
-from lynx_logger import setup_logger, FastAPILoggingMiddleware
-
-app = FastAPI()
-logger = setup_logger("fastapi_app", format="json")
-
-# Добавляем middleware
-app.add_middleware(FastAPILoggingMiddleware, logger=logger.get_logger())
-
-@app.get("/")
-async def root():
-    logger.info("Root endpoint called")
-    return {"message": "Hello World"}
-```
-
-### Flask
-
-```python
-from flask import Flask
-from lynx_logger import setup_logger, FlaskLoggingMiddleware
-
-app = Flask(__name__)
-logger = setup_logger("flask_app")
-
-# Добавляем middleware
-FlaskLoggingMiddleware(app, logger.get_logger())
-
-@app.route("/")
-def hello():
-    logger.info("Hello endpoint called")
-    return "Hello World"
-```
-
-### Django (в settings.py)
-
-```python
-# settings.py
-MIDDLEWARE = [
-    'lynx_logger.middleware.DjangoLoggingMiddleware',
-    # ... другие middleware
-]
-```
+Другиве примеры использования можно найти в [examples](examples/README.md) 
 
 ## Форматы вывода
 

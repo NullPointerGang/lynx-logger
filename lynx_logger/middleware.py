@@ -41,86 +41,88 @@ class FastAPILoggingMiddleware:
         self.include_response_body = include_response_body
         self.max_body_size = max_body_size
     
-    async def __call__(self, request, call_next):
-        """Обработка запроса"""
-        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-        trace_id = request.headers.get("X-Trace-ID") or str(uuid.uuid4())
-        user_id = request.headers.get("X-User-ID")
-        
-        if request.url.path in self.exclude_paths:
-            response = await call_next(request)
-            return response
-        
-        with RequestContext(request_id=request_id, user_id=user_id, trace_id=trace_id):
-            start_time = time.time()
-
-            request_logger = self.logger.bind(
-                request_id=request_id,
-                trace_id=trace_id,
-                user_id=user_id,
-                method=request.method,
-                path=request.url.path,
-                query_params=str(request.query_params) if request.query_params else None,
-                user_agent=request.headers.get("User-Agent"),
-                client_ip=self._get_client_ip(request)
-            )
+    def __call__(self, app):
+        """Создает middleware для FastAPI"""
+        async def middleware(request, call_next):
+            """Обработка запроса"""
+            request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+            trace_id = request.headers.get("X-Trace-ID") or str(uuid.uuid4())
+            user_id = request.headers.get("X-User-ID")
             
-            if self.log_requests:
-                log_data = {
-                    "event": "Request started",
-                    "method": request.method,
-                    "path": request.url.path,
-                    "query_params": dict(request.query_params),
-                    "headers": dict(request.headers)
-                }
-
-                if self.include_request_body:
-                    body = await self._get_request_body(request)
-                    if body:
-                        log_data["request_body"] = body
-                
-                request_logger.info("HTTP request", **log_data)
-            
-            try:
+            if request.url.path in self.exclude_paths:
                 response = await call_next(request)
-                
-                process_time = time.time() - start_time
-                
-                if self.log_responses:
-                    log_data = {
-                        "event": "Request completed",
-                        "status_code": response.status_code,
-                        "process_time": round(process_time, 4),
-                        "response_headers": dict(response.headers)
-                    }
-                    
-                    if self.include_response_body:
-                        body = await self._get_response_body(response)
-                        if body:
-                            log_data["response_body"] = body
-                    
-                    if response.status_code >= 500:
-                        request_logger.error("HTTP response", **log_data)
-                    elif response.status_code >= 400:
-                        request_logger.warning("HTTP response", **log_data)
-                    else:
-                        request_logger.info("HTTP response", **log_data)
-                
-                response.headers["X-Request-ID"] = request_id
-                response.headers["X-Trace-ID"] = trace_id
-                response.headers["X-Process-Time"] = str(round(process_time, 4))
-                
                 return response
-                
-            except Exception as exc:
-                process_time = time.time() - start_time
-                request_logger.exception(
-                    "Request failed",
-                    exception_type=type(exc).__name__,
-                    exception_message=str(exc),
-                    process_time=round(process_time, 4)
+            
+            with RequestContext(request_id=request_id, user_id=user_id, trace_id=trace_id):
+                start_time = time.time()
+
+                request_logger = self.logger.bind(
+                    request_id=request_id,
+                    trace_id=trace_id,
+                    user_id=user_id,
+                    method=request.method,
+                    path=request.url.path,
+                    query_params=str(request.query_params) if request.query_params else None,
+                    user_agent=request.headers.get("User-Agent"),
+                    client_ip=self._get_client_ip(request)
                 )
-                raise
+                
+                if self.log_requests:
+                    log_data = {
+                        "method": request.method,
+                        "path": request.url.path,
+                        "query_params": dict(request.query_params),
+                        "headers": dict(request.headers)
+                    }
+
+                    if self.include_request_body:
+                        body = await self._get_request_body(request)
+                        if body:
+                            log_data["request_body"] = body
+                    
+                    request_logger.info("HTTP request", **log_data)
+                
+                try:
+                    response = await call_next(request)
+                    
+                    process_time = time.time() - start_time
+                    
+                    if self.log_responses:
+                        log_data = {
+                            "status_code": response.status_code,
+                            "process_time": round(process_time, 4),
+                            "response_headers": dict(response.headers)
+                        }
+                        
+                        if self.include_response_body:
+                            body = await self._get_response_body(response)
+                            if body:
+                                log_data["response_body"] = body
+                        
+                        if response.status_code >= 500:
+                            request_logger.error("HTTP response", **log_data)
+                        elif response.status_code >= 400:
+                            request_logger.warning("HTTP response", **log_data)
+                        else:
+                            request_logger.info("HTTP response", **log_data)
+                    
+                    response.headers["X-Request-ID"] = request_id
+                    response.headers["X-Trace-ID"] = trace_id
+                    response.headers["X-Process-Time"] = str(round(process_time, 4))
+                    
+                    return response
+                    
+                except Exception as exc:
+                    process_time = time.time() - start_time
+                    request_logger.exception(
+                        "Request failed",
+                        exception_type=type(exc).__name__,
+                        exception_message=str(exc),
+                        process_time=round(process_time, 4)
+                    )
+                    raise
+        
+        return middleware
     
     def _get_client_ip(self, request) -> str:
         """Получает IP клиента"""
@@ -358,4 +360,3 @@ class DjangoLoggingMiddleware:
                 process_time=round(process_time, 4)
             )
             raise 
-

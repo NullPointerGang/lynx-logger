@@ -4,7 +4,7 @@ Setup script for LynxLogger library
 
 from setuptools import setup, find_packages
 import os
-
+from lynx_logger import __version__
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -21,7 +21,7 @@ requirements = read_requirements()
 
 setup(
     name="lynx-logger",
-    version="1.0.0",
+    version=__version__,
     author="FlacSy",
     author_email="flacsy.x@gmail.com",
     description="Универсальная библиотека структурированного логирования на основе structlog",

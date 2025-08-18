@@ -10,6 +10,10 @@ from .config import Format
 class ConsoleFormatter:
     """Форматировщик для консольного вывода"""
     
+    def __init__(self, colors: bool = True, pad_level: bool = True, dev_mode: bool = False):
+        """Инициализация форматировщика"""
+        self.processor = self.create(colors, pad_level, dev_mode)
+    
     @staticmethod
     def create(colors: bool = True, pad_level: bool = True, dev_mode: bool = False):
         """Создает процессор для консольного вывода"""
@@ -25,10 +29,29 @@ class ConsoleFormatter:
             } if colors else None,
             exception_formatter=structlog.dev.rich_traceback if dev_mode else structlog.dev.plain_traceback
         )
+    
+    def format(self, record):
+        """Форматирует запись лога"""
+        event_dict = {
+            "event": record.getMessage(),
+            "level": record.levelname,
+            "logger": record.name,
+            "timestamp": record.created,
+        }
+        
+        for key, value in record.__dict__.items():
+            if key not in ("name", "msg", "args", "levelname", "levelno", "pathname", "filename", "module", "lineno", "funcName", "created", "msecs", "relativeCreated", "thread", "threadName", "processName", "process", "getMessage", "exc_info", "exc_text", "stack_info"):
+                event_dict[key] = value
+        
+        return self.processor(None, None, event_dict)
 
 
 class JSONFormatter:
     """Форматировщик для JSON вывода"""
+    
+    def __init__(self, sort_keys: bool = False, indent: Optional[int] = None):
+        """Инициализация форматировщика"""
+        self.processor = self.create(sort_keys, indent)
     
     @staticmethod
     def create(sort_keys: bool = False, indent: Optional[int] = None):
@@ -37,10 +60,36 @@ class JSONFormatter:
             sort_keys=sort_keys,
             indent=indent
         )
+    
+    def format(self, record):
+        """Форматирует запись лога"""
+        # Преобразуем LogRecord в event_dict для structlog
+        event_dict = {
+            "event": record.getMessage(),
+            "level": record.levelname.lower(),
+            "logger": record.name,
+            "timestamp": record.created,
+        }
+        
+        # Добавляем информацию об исключении
+        if record.exc_info:
+            import traceback
+            event_dict["exception"] = "".join(traceback.format_exception(*record.exc_info))
+        
+        # Добавляем дополнительные поля
+        for key, value in record.__dict__.items():
+            if key not in ("name", "msg", "args", "levelname", "levelno", "pathname", "filename", "module", "lineno", "funcName", "created", "msecs", "relativeCreated", "thread", "threadName", "processName", "process", "getMessage", "exc_info", "exc_text", "stack_info"):
+                event_dict[key] = value
+        
+        return self.processor(None, None, event_dict)
 
 
 class KeyValueFormatter:
     """Форматировщик для key=value вывода"""
+    
+    def __init__(self, key_order: Optional[List[str]] = None, drop_missing: bool = False):
+        """Инициализация форматировщика"""
+        self.processor = self.create(key_order, drop_missing)
     
     @staticmethod
     def create(key_order: Optional[List[str]] = None, drop_missing: bool = False):
@@ -49,6 +98,23 @@ class KeyValueFormatter:
             key_order=key_order or ["timestamp", "level", "logger", "event"],
             drop_missing=drop_missing
         )
+    
+    def format(self, record):
+        """Форматирует запись лога"""
+        # Преобразуем LogRecord в event_dict для structlog
+        event_dict = {
+            "event": record.getMessage(),
+            "level": record.levelname.lower(),  # Для keyvalue используем нижний регистр
+            "logger": record.name,
+            "timestamp": record.created,
+        }
+        
+        # Добавляем дополнительные поля
+        for key, value in record.__dict__.items():
+            if key not in ("name", "msg", "args", "levelname", "levelno", "pathname", "filename", "module", "lineno", "funcName", "created", "msecs", "relativeCreated", "thread", "threadName", "processName", "process", "getMessage", "exc_info", "exc_text", "stack_info"):
+                event_dict[key] = value
+        
+        return self.processor(None, None, event_dict)
 
 
 class PlainFormatter:

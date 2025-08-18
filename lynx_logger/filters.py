@@ -206,4 +206,3 @@ class ThrottleFilter(logging.Filter):
         self.message_times[message_key].append(current_time)
         
         return len(self.message_times[message_key]) <= self.max_repeats 
-    
