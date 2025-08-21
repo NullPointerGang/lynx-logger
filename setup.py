@@ -2,12 +2,21 @@
 Setup script for LynxLogger library
 """
 
-from setuptools import setup, find_packages
 import os
-from lynx_logger import __version__
+import re
+from setuptools import setup, find_packages
+
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
+
+def get_version():
+    with open(os.path.join("lynx_logger", "__init__.py"), "r", encoding="utf-8") as f:
+        content = f.read()
+    match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", content, re.M)
+    if match:
+        return match.group(1)
+    raise RuntimeError("Version not found")
 
 def read_requirements():
     """Читает requirements из файла"""
@@ -21,7 +30,7 @@ requirements = read_requirements()
 
 setup(
     name="lynx-logger",
-    version=__version__,
+    version=get_version(),
     author="FlacSy",
     author_email="flacsy.x@gmail.com",
     description="Универсальная библиотека структурированного логирования на основе structlog",
